@@ -36,7 +36,9 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(pico_audio_lab
+        encoder.c
         pico_audio_lab.c
+        touch.c
 )
 
 # Generate touch.pio.h and add its generated directory to this target's

@@ -27,7 +27,7 @@ start:
 
 % c-sdk {
 // this is a raw helper function for use by the user which sets up the GPIO output, and configures the SM to output on a particular pin
-void touch_init(PIO pio,uint sm,uint offset, uint pin, uint num_buttons, float pio_clk_div){
+void touch_sm_init(PIO pio,uint sm,uint offset, uint pin, uint num_buttons, float pio_clk_div){
 int i;
 for(i=0; i< num_buttons; i++) {
     pio_gpio_init(pio, pin + i);
