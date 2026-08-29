@@ -36,7 +36,9 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(pico_audio_lab
+        audio_pwm.c
         encoder.c
+        pam8302.c
         pico_audio_lab.c
         touch.c
 )
@@ -58,6 +60,7 @@ pico_enable_stdio_usb(pico_audio_lab 1)
 target_link_libraries(pico_audio_lab
         pico_stdlib
         hardware_pio
+        hardware_pwm
 )
 
 # Add the standard include files to the build
