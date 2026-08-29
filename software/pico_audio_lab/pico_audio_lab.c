@@ -3,6 +3,7 @@
 #include <string.h>
 #include "audio_pwm.h"
 #include "encoder.h"
+#include "midi_usb.h"
 #include "pam8302.h"
 #include "pico/stdlib.h"
 #include "touch.h"
@@ -31,6 +32,7 @@
 
 static bool watch_encoder = true;
 static bool watch_encoder_raw;
+static bool watch_midi = true;
 
 static void print_encoder_status(void) {
     const uint8_t raw = encoder_get_raw_state();
@@ -55,6 +57,15 @@ static void print_console_help(void) {
     printf("  tone <Hz>|off  Set the differential PWM test tone\n");
     printf("  level <0-100>  Set test-tone level percentage\n");
     printf("  audio          Show audio path status\n");
+    printf("  midi           Show USB MIDI receive statistics\n");
+    printf("  midi watch on|off  Enable or disable MIDI event output\n");
+}
+
+static void print_midi_status(void) {
+    printf("USB MIDI: received=%lu dropped=%lu watch=%s\n",
+           (unsigned long)midi_usb_get_received_count(),
+           (unsigned long)midi_usb_get_dropped_count(),
+           watch_midi ? "on" : "off");
 }
 
 static void print_audio_status(void) {
@@ -115,9 +126,44 @@ static void run_console_command(const char *command) {
             audio_pwm_set_level_percent((uint8_t)value);
             printf("level: %u%%\n", value);
         }
+    } else if (strcmp(command, "midi") == 0) {
+        print_midi_status();
+    } else if (strcmp(command, "midi watch on") == 0) {
+        watch_midi = true;
+        printf("USB MIDI watch: on\n");
+    } else if (strcmp(command, "midi watch off") == 0) {
+        watch_midi = false;
+        printf("USB MIDI watch: off\n");
     } else if (command[0] != '\0') {
         printf("Unknown command: %s\n", command);
         printf("Type 'help' for available commands.\n");
+    }
+}
+
+static void report_midi_messages(void) {
+    midi_usb_message_t message;
+    while (midi_usb_get_message(&message)) {
+        if (!watch_midi) {
+            continue;
+        }
+
+        const uint8_t type = message.status & 0xf0u;
+        const uint8_t channel = (message.status & 0x0fu) + 1u;
+        if (type == 0x90u && message.data2 != 0) {
+            printf("\rUSB MIDI: note on  ch=%u note=%u velocity=%u\n> ",
+                   channel, message.data1, message.data2);
+        } else if (type == 0x80u ||
+                   (type == 0x90u && message.data2 == 0)) {
+            printf("\rUSB MIDI: note off ch=%u note=%u velocity=%u\n> ",
+                   channel, message.data1, message.data2);
+        } else if (type == 0xb0u) {
+            printf("\rUSB MIDI: control ch=%u cc=%u value=%u\n> ",
+                   channel, message.data1, message.data2);
+        } else {
+            printf("\rUSB MIDI: cable=%u %02x %02x %02x\n> ",
+                   message.cable, message.status,
+                   message.data1, message.data2);
+        }
     }
 }
 
@@ -212,6 +258,7 @@ void displayKeyboard(uint16_t buttons) {
 }
 
 int main(){
+    midi_usb_init();
     stdio_init_all();
 //setup IO
     gpio_init(LED_1);
@@ -236,6 +283,8 @@ int main(){
 
     while (true){
         encoder_update();
+        midi_usb_update();
+        report_midi_messages();
         report_raw_encoder_changes();
         report_encoder_events();
         update_console();

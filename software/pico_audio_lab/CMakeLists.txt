@@ -38,9 +38,11 @@ pico_sdk_init()
 add_executable(pico_audio_lab
         audio_pwm.c
         encoder.c
+        midi_usb.c
         pam8302.c
         pico_audio_lab.c
         touch.c
+        usb_descriptors.c
 )
 
 # Generate touch.pio.h and add its generated directory to this target's
@@ -61,6 +63,13 @@ target_link_libraries(pico_audio_lab
         pico_stdlib
         hardware_pio
         hardware_pwm
+        tinyusb_device
+)
+
+# Keep the SDK USB serial console but replace its CDC-only descriptors with
+# this project's composite CDC + MIDI descriptors.
+target_compile_definitions(pico_audio_lab PRIVATE
+        PICO_STDIO_USB_USE_DEFAULT_DESCRIPTORS=0
 )
 
 # Add the standard include files to the build
